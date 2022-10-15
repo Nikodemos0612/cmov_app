@@ -1,50 +1,44 @@
-import 'package:facedetection_test_app/theme/style.dart';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+import 'routes.dart' as route;
+
+bool isIOS = false;
 
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  final Brightness _brightness = WidgetsBinding.instance.window.platformBrightness;
-
-  
   @override
   Widget build(BuildContext context) {
     return const CupertinoApp(
-      theme: _brightness == Brightness.dark ? darkCupAppTheme() : cupAppTheme(),
 
-      home: HomeScreen(),
-    );
-  }
-}
+      // TODO: theme que troca se o celular esta no modo escuro ou claro
+      // Tentei fazer usando o arquivo "style", mas não consegui de geito algum (mesmo tentando chamar só 1)
+      theme: CupertinoThemeData(
+          brightness: Brightness.light,
+          primaryColor: CupertinoColors.activeOrange,
+          primaryContrastingColor: CupertinoColors.white,
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+          textTheme: CupertinoTextThemeData(
+              textStyle: TextStyle(
+                  fontFamily: 'Arial'
+              ),
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoTabScaffold(
-      tabBar: CupertinoTabBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.satellite_outlined)),
-
-          BottomNavigationBarItem(icon: Icon(Icons.add_a_photo_outlined)),
-        ],
+              navLargeTitleTextStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 70.0,
+                  color: CupertinoColors.systemOrange
+              )
+          )
       ),
 
-      tabBuilder: (BuildContext context, i) {
-        return CupertinoTabView(
-          builder: (context){
-            return (i == 0) ? const StaticImagePoseDetectorScreen() : const VideoPoseDetectorScreen();
-          },
-        );
-      },
+      debugShowCheckedModeBanner: false,
+
+      onGenerateRoute: route.controller,
+      initialRoute: route.tabControl,
     );
   }
 }

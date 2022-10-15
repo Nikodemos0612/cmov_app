@@ -1,47 +1,48 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-
 // Cupertino themes
-CupertinoThemeData cupAppTheme() {
-  return const CupertinoThemeData(
-    brightness: Brightness.light,
-    primaryColor: CupertinoColors.activeOrange,
-    primaryContrastingColor: CupertinoColors.white,
 
-    textTheme: CupertinoTextThemeData(
-      textStyle: TextStyle(
-        fontFamily: 'Arial'
-      ),
+// TENTEI E NN FUNCIONA, VOU IGNORAR
 
-      navLargeTitleTextStyle: TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 70.0,
-        color: CupertinoColors.systemOrange
-      )
-    )
-  );
-}
+  CupertinoThemeData cupAppTheme() {
+    return CupertinoThemeData(
+        brightness: Brightness.light,
+        primaryColor: CupertinoColors.activeOrange,
+        primaryContrastingColor: CupertinoColors.white,
 
-CupertinoThemeData darkCupAppTheme() {
-  return const CupertinoThemeData(
-    brightness: Brightness.dark,
-    primaryColor: CupertinoColors.activeOrange,
-    primaryContrastingColor: CupertinoColors.white,
+        textTheme: CupertinoTextThemeData(
+            textStyle: TextStyle(
+                fontFamily: 'Arial'
+            ),
 
-    textTheme: CupertinoTextThemeData(
-      textStyle: TextStyle(
-        fontFamily: 'Arial',
-        color: CupertinoColors.white
-      ),
-      
-      navLargeTitleTextStyle: TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 70.0,
-        color: CupertinoColors.systemOrange
-      )
-    )
-  );
-}
+            navLargeTitleTextStyle: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 70.0,
+                color: CupertinoColors.systemOrange
+            )
+        )
+    );
+  }
+
+  CupertinoThemeData darkCupAppTheme() {
+    return CupertinoThemeData(
+        brightness: Brightness.dark,
+        primaryColor: CupertinoColors.activeOrange,
+        primaryContrastingColor: CupertinoColors.white,
+
+        textTheme: CupertinoTextThemeData(
+            textStyle: TextStyle(
+                fontFamily: 'Arial',
+                color: CupertinoColors.white
+            ),
+
+            navLargeTitleTextStyle: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 70.0,
+                color: CupertinoColors.systemOrange
+            )
+        )
+    );
+  }
 
 // Material Themes
 /*
