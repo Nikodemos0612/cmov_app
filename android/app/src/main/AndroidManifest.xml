@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.facedetection_test_app">
+
    <application
         android:label="facedetection_test_app"
         android:name="${applicationName}"
