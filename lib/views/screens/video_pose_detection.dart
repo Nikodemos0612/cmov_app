@@ -18,11 +18,10 @@ class VideoPoseDetectionScreen extends StatefulWidget {
 
 class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
-  List<CameraDescription>? cameras; // Cameras disponíveis
+  List<CameraDescription>? cameras; // Lista de cameras disponíveis
   CameraController? controller;
   XFile? imageFile; // A imagem tirada
   List<Pose>? poses;
-  bool atualizar = false;
 
   void loadCamera() async{
     cameras = await availableCameras();
@@ -31,14 +30,12 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       // camera[0] = primeira camera
       controller = CameraController(cameras![0], ResolutionPreset.max);
 
-      print("aqui");
       controller!.initialize().then((value) {
         if (!mounted) {
           return;
         }
         setState(() {});
       });
-      print("ali");
 
     }
     else{
@@ -50,10 +47,9 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     try{
       if (controller != null){
         if (controller!.value.isInitialized) {
-        print("oi");
+
         imageFile = await controller!.takePicture();
         setState(() {});
-        print("tchau");
 
         if (imageFile != null) {
           getPosesFromImage(imageFile!);
@@ -69,7 +65,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       imageFile = null;
       setState(() {});
 
-      print("Deu erro aqui");
+      print(e);
     }
   }
 
@@ -84,17 +80,15 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     await poseDetector.close();
 
     this.poses = poses;
-    atualizar = true;
-    print(poses);
     setState(() {});
 
-    tirarFotoEProcessar();
+    //tirarFotoEProcessar();
   }
 
   @override
   void initState() {
-    loadCamera();
     super.initState();
+    loadCamera();
   }
 
   @override
@@ -110,23 +104,23 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
             children: [
 
               Container(
-                child: controller == null?
-                  const Align(alignment: Alignment.center, child: CircularProgressIndicator(),)
+                child: controller == null? // Carregando camera
+                  Shimmer.fromColors(
+                    baseColor: Colors.black,
+                    highlightColor: Colors.white,
+                    child: const SizedBox(width: double.infinity, height: 300,)
+                  )
                     :
                   !controller!.value.isInitialized?
-                    Shimmer.fromColors(
-                      baseColor: Colors.grey,
-                      highlightColor: Colors.white,
-                      child: const SizedBox(width: double.infinity, height: 300,)
+                    const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),) 
+                    :
+                  poses == null? // Camera carregada
+                    CameraPreview(controller!)
+                    :
+                    CustomPaint(
+                      foregroundPainter: PosePainter(poses!),
+                      child: CameraPreview(controller!),
                     )
-                      :
-                      poses == null?
-                        CameraPreview(controller!)
-                          :
-                        CustomPaint(
-                          foregroundPainter: PosePainter(poses!),
-                          child: CameraPreview(controller!),
-                        )
               ),
 
               TextButton(onPressed: tirarFotoEProcessar, child: Text("FUNCIONAAAAAA"))
@@ -153,12 +147,12 @@ class PosePainter extends CustomPainter{
     for (Pose pose in poses) {
       pose.landmarks.forEach((_, landmark) {
         // Pega o nome do local do corpo
-        final type = landmark.type;
+        //final type = landmark.type;
 
         // Pega a localização dele na imagem
         final x = landmark.x;
         final y = landmark.y;
-        final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
+        //final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
 
         final myPaint = Paint()
           ..style = PaintingStyle.stroke
