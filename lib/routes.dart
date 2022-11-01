@@ -24,7 +24,7 @@ Route<dynamic> controller(RouteSettings settings){
 cupPage(String routeName){
   switch(routeName){
     case imagePoseDetectionTab:
-      return const ImagePoseDetection();
+      return const StaticImagePoseDetectorScreen();
 
     case videoPoseDetectionTab:
       return const VideoPoseDetectionScreen();

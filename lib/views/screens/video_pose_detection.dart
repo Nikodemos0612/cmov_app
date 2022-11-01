@@ -36,10 +36,13 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
         }
         setState(() {});
       });
-
     }
     else{
-      print("Celular sem camera amigo?");
+      print("Não foi encontrado nenhuma camera");
+    }
+
+    if (controller != null) {
+      setState(() {});
     }
   }
 
@@ -48,16 +51,20 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       if (controller != null){
         if (controller!.value.isInitialized) {
 
-        imageFile = await controller!.takePicture();
-        setState(() {});
+          controller!.setFlashMode(FlashMode.off);
 
-        if (imageFile != null) {
-          getPosesFromImage(imageFile!);
+          imageFile = await controller!.takePicture();
+          setState(() {});
+
+          print(" ============================ FOTO TIRADA =====================================");
+
+          if (imageFile != null) {
+            getPosesFromImage(imageFile!);
+          }
+          else{
+            print("Imagem deu nullo por algum motivo");
+          }
         }
-        else{
-          print("Imagem deu nullo por algum motivo");
-        }
-      }
       }
     }
     catch (e)
@@ -80,24 +87,27 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     await poseDetector.close();
 
     this.poses = poses;
+
+    if (poses.isEmpty){
+      print("Não foi encontrado nenhuma pose");
+    }
+
     setState(() {});
 
-    //tirarFotoEProcessar();
+    print("================================== IMAGEM PROCESSADA =========================================");
   }
 
   @override
   void initState() {
     super.initState();
     loadCamera();
+
   }
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.black,
+      child: CupertinoScrollbar(
 
         child: Center(
           child: Column(
@@ -111,19 +121,23 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                     child: const SizedBox(width: double.infinity, height: 300,)
                   )
                     :
-                  !controller!.value.isInitialized?
+                  !controller!.value.isInitialized? // Achou camera mas ainda está carregando
                     const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),) 
                     :
-                  poses == null? // Camera carregada
-                    CameraPreview(controller!)
-                    :
                     CustomPaint(
-                      foregroundPainter: PosePainter(poses!),
+                      foregroundPainter: PosePainter(poses),
                       child: CameraPreview(controller!),
                     )
               ),
 
-              TextButton(onPressed: tirarFotoEProcessar, child: Text("FUNCIONAAAAAA"))
+              TextButton(
+                onPressed: tirarFotoEProcessar,
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.orange
+                ),
+
+                child: const Text("FUNCIONAAAAA"),
+              )
             ],
           ),
         ),
@@ -133,34 +147,35 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   }
 }
 
+// Desenha as poses na camera
 class PosePainter extends CustomPainter{
 
-  final List<Pose> poses;
+  final List<Pose>? poses;
 
   PosePainter(this.poses);
-
-  bool isPosesDiferent = false;
 
   @override
   void paint (Canvas canvas, Size size){
 
-    for (Pose pose in poses) {
-      pose.landmarks.forEach((_, landmark) {
-        // Pega o nome do local do corpo
-        //final type = landmark.type;
+    if (poses != null && poses!.isNotEmpty){
+      for (Pose pose in poses!) {
+        pose.landmarks.forEach((_, landmark) {
+          // Pega o nome do local do corpo
+          //final type = landmark.type;
 
-        // Pega a localização dele na imagem
-        final x = landmark.x;
-        final y = landmark.y;
-        //final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
+          // Pega a localização dele na imagem
+          final x = landmark.x;
+          final y = landmark.y;
+          //final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
 
-        final myPaint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 10
-          ..color = Colors.orange;
+          final myPaint = Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 10
+            ..color = Colors.orange;
 
-        canvas.drawCircle(Offset(x, y), 25, myPaint);
-      });
+          canvas.drawCircle(Offset(x, y), 25, myPaint);
+        });
+      }
     }
   }
 
