@@ -24,7 +24,6 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      child: SizedBox.expand(
           child: Padding(
             padding: EdgeInsets.only(top: 30),
             child: CupertinoScrollbar(
@@ -114,7 +113,6 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
                   )
               )
           )
-      ),
     );
   }
 
@@ -213,6 +211,11 @@ class PosePainter extends CustomPainter{
     canvas.drawImage(image, Offset.zero, Paint());
 
     if (poses.isNotEmpty){
+      var pointPainter = Paint()
+        ..color = Colors.orange
+        ..strokeCap = StrokeCap.round //rounded points
+        ..strokeWidth = 10;
+
       for (Pose pose in poses) {
         pose.landmarks.forEach((_, landmark) {
           // Pega o nome do local do corpo
@@ -223,12 +226,7 @@ class PosePainter extends CustomPainter{
           final y = landmark.y;
           final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
 
-          final myPaint = Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 10
-            ..color = Colors.orange;
-
-          canvas.drawCircle(Offset(x, y), 25, myPaint);
+          canvas.drawCircle(Offset(x, y), 25, pointPainter);
         });
       }
     }
