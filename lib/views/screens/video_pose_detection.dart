@@ -24,6 +24,9 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   List<Pose>? poses;
   UI.Image? image;
 
+  bool poseScanning = false;
+  bool pausar = true;
+
   void loadCamera() async{
     cameras = await availableCameras();
 
@@ -47,7 +50,16 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     }
   }
 
-  void tirarFotoEProcessar() async{
+  void takePictureAndTakePoses() async{
+    if (pausar){
+      poseScanning = false;
+      setState(() {});
+      return;
+    }
+
+    poseScanning = true;
+    setState(() {});
+
     try{
       if (controller != null){
         if (controller!.value.isInitialized) {
@@ -61,6 +73,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
           if (imageFile != null) {
             image = await _loadImage(File(imageFile!.path));
+            setState(() {});
             getPosesFromImage(imageFile!);
           }
           else{
@@ -94,63 +107,86 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     await poseDetector.close();
 
     this.poses = poses;
+    setState(() {});
 
     if (poses.isEmpty){
       print("Não foi encontrado nenhuma pose");
     }
 
-    setState(() {});
-
     print("================================== IMAGEM PROCESSADA =========================================");
-    tirarFotoEProcessar();
+    takePictureAndTakePoses();
   }
 
   @override
   void initState() {
     super.initState();
     loadCamera();
-
   }
 
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
+      backgroundColor: Colors.black,
       child: CupertinoScrollbar(
-
-        child: Center(
-          child: Column(
-            children: [
-
-              Container(
-                child: controller == null? // Carregando camera
-                  Shimmer.fromColors(
-                    baseColor: Colors.black,
-                    highlightColor: Colors.white,
-                    child: const SizedBox(width: double.infinity, height: 300,)
-                  )
-                    :
-                  !controller!.value.isInitialized? // Achou camera mas ainda está carregando
-                    const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),) 
-                    :
-                    CustomPaint(
-                      foregroundPainter: PosePainter(poses, image, MediaQuery.of(context).size.width, MediaQuery.of(context).size.height),
-                      child: CameraPreview(controller!),
+        child: SizedBox.expand(
+          child: Center(
+              child: Stack(
+                children: <Widget>[
+                  Center(
+                    child: controller == null? // Carregando camera
+                    Shimmer.fromColors(
+                        baseColor: Colors.black,
+                        highlightColor: Colors.white,
+                        child: const SizedBox(width: double.infinity, height: 300,)
                     )
-              ),
+                        :
+                    !controller!.value.isInitialized? // Achou camera mas ainda está carregando
+                    const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),)
+                        :
+                    CustomPaint(
+                      foregroundPainter: PosePainter(poses, image, MediaQuery.of(context).size.width, MediaQuery.of(context).size.height, pausar),
+                      child: CameraPreview(controller!),
+                    ),
+                  ),
 
-              TextButton(
-                onPressed: tirarFotoEProcessar,
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.orange
-                ),
-
-                child: const Text("FUNCIONAAAAA"),
+                  if (controller != null && controller!.value.isInitialized)
+                    pausar?
+                      MaterialButton(
+                        onPressed: () {
+                          if (!poseScanning){ // Evita chamar novamente se ja estiver rodando
+                            // Isso pode acontecer caso o usuário aperte varias vezes o botão
+                            pausar = false;
+                            setState(() {});
+                            takePictureAndTakePoses();
+                          }
+                        },
+                        child: Container(
+                          alignment: Alignment.bottomCenter,
+                          child: const Padding(
+                            padding: EdgeInsets.only(bottom: 100),
+                            child: Icon(Icons.play_arrow, color: Colors.white, size: 40,),
+                          ),
+                        ),
+                      )
+                    :
+                      MaterialButton(
+                        onPressed: () {
+                          pausar = true;
+                          setState(() {});
+                        },
+                        child: Container(
+                          alignment: Alignment.bottomCenter,
+                          child: const Padding(
+                              padding: EdgeInsets.only(bottom: 100),
+                              child: Icon(Icons.pause, color: Colors.white, size: 40,)
+                          ),
+                        )
+                    )
+                ],
               )
-            ],
           ),
         ),
       ),
-
     );
   }
 }
@@ -162,31 +198,28 @@ class PosePainter extends CustomPainter{
   final UI.Image? image;
   double cameraWidth;
   double cameraHeight;
+  bool pause;
+
   //final CameraController controller;
 
-  PosePainter(this.poses, this.image, this.cameraWidth, this.cameraHeight);
+  PosePainter(this.poses, this.image, this.cameraWidth, this.cameraHeight, this.pause);
 
   @override
   void paint (Canvas canvas, Size size){
 
-    if (poses != null && poses!.isNotEmpty && image != null ){
+    if (poses != null && poses!.isNotEmpty && image != null && !pause){
       var pointPainter = Paint()
-        ..color = Color(0xff63aa65)
+        ..color = Colors.orange
         ..strokeCap = StrokeCap.round //rounded points
         ..strokeWidth = 10;
 
       int imageWidth = image!.width;
       int imageHeight = image!.height;
 
-      //double cameraWidth = controller.value.previewSize!.width;
-      //double cameraHeight = controller.value.previewSize!.height;
-
       for (Pose pose in poses!) {
         pose.landmarks.forEach((_, landmark) {
           // Pega o nome do local do corpo
           //final type = landmark.type;
-
-
 
           // Pega a localização dele na imagem
           final x = landmark.x / imageWidth;
@@ -201,6 +234,11 @@ class PosePainter extends CustomPainter{
 
   @override
   bool shouldRepaint (PosePainter oldDelegate) {
+
+    if (pause != oldDelegate.pause) {
+      return true;
+    }
+
     if (poses == null) {
       return false;
     }
