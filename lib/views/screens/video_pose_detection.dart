@@ -27,6 +27,15 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   bool poseScanning = false;
   bool pausar = true;
 
+  final _cameraWidgetKey = GlobalKey();
+  Size? _cameraWidgetSize;
+
+  void getSize() {
+    setState(() {
+      _cameraWidgetSize = _cameraWidgetKey.currentContext!.size;
+    });
+  }
+
   void loadCamera() async{
     cameras = await availableCameras();
 
@@ -68,8 +77,6 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
           imageFile = await controller!.takePicture();
           setState(() {});
-
-          print(" ============================ FOTO TIRADA =====================================");
 
           if (imageFile != null) {
             image = await _loadImage(File(imageFile!.path));
@@ -113,7 +120,6 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       print("Não foi encontrado nenhuma pose");
     }
 
-    print("================================== IMAGEM PROCESSADA =========================================");
     takePictureAndTakePoses();
   }
 
@@ -144,8 +150,8 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                     const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),)
                         :
                     CustomPaint(
-                      foregroundPainter: PosePainter(poses, image, MediaQuery.of(context).size.width, MediaQuery.of(context).size.height, pausar),
-                      child: CameraPreview(controller!),
+                      foregroundPainter: PosePainter(poses, image, _cameraWidgetSize, pausar),
+                      child: CameraPreview(controller!, key: _cameraWidgetKey,),
                     ),
                   ),
 
@@ -157,6 +163,8 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                             // Isso pode acontecer caso o usuário aperte varias vezes o botão
                             pausar = false;
                             setState(() {});
+
+                            getSize();
                             takePictureAndTakePoses();
                           }
                         },
@@ -196,18 +204,17 @@ class PosePainter extends CustomPainter{
 
   final List<Pose>? poses;
   final UI.Image? image;
-  double cameraWidth;
-  double cameraHeight;
+  Size ?cameraSize;
   bool pause;
 
   //final CameraController controller;
 
-  PosePainter(this.poses, this.image, this.cameraWidth, this.cameraHeight, this.pause);
+  PosePainter(this.poses, this.image, this.cameraSize, this.pause);
 
   @override
   void paint (Canvas canvas, Size size){
 
-    if (poses != null && poses!.isNotEmpty && image != null && !pause){
+    if (poses != null && poses!.isNotEmpty && image != null && !pause && cameraSize != null){
       var pointPainter = Paint()
         ..color = Colors.orange
         ..strokeCap = StrokeCap.round //rounded points
@@ -226,7 +233,7 @@ class PosePainter extends CustomPainter{
           final y = landmark.y / imageHeight;
           //final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
 
-          canvas.drawCircle(Offset(x * cameraWidth, y * cameraHeight), 25, pointPainter);
+          canvas.drawCircle(Offset(x * cameraSize!.width, y * cameraSize!.height), 25, pointPainter);
         });
       }
     }

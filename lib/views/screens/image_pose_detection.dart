@@ -61,11 +61,15 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
                                     highlightColor: Colors.black12,
                                     period: const Duration(seconds: 5),
                                     child: Padding(
-                                        padding: EdgeInsets.fromLTRB(15, 15, 15, 5),
+                                        padding: const EdgeInsets.fromLTRB(15, 15, 15, 5),
                                         child: Container(
                                           decoration: BoxDecoration(
                                               color: Colors.white60,
-                                              borderRadius: BorderRadius.circular(10)
+                                              borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: MaterialButton(
+                                            onPressed: getImageFromGallery,
+                                            child: const SizedBox.expand(),
                                           ),
                                         )
                                     )
@@ -74,7 +78,7 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
                                 Container(
                                   width: double.infinity,
                                   height: double.infinity,
-                                  child: const Center(child: (Text("Adicione uma imagem")),),
+                                  child: const Center(child: (Text("Adicione uma imagem", style: TextStyle(color: Colors.white),)),),
                                 ),
                               ],
                             ),
