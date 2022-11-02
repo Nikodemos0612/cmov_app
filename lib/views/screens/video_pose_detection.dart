@@ -1,13 +1,30 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart'; // MLKit responsavel por detectar poses
+import 'package:path_provider/path_provider.dart';
+import 'package:shimmer/shimmer.dart'; // Animação de "carregado" ou "brilhando"
 
 import 'dart:io';
-import 'dart:ui' as UI;
+import 'dart:ui' as UI; // Imagem
 
-import 'package:facedetection_test_app/routes.dart';
+import 'dart:ffi'; // Responsavel pela conversão da imagem com o código em C++
+import 'dart:typed_data';
+import 'package:ffi/ffi.dart';
+import 'package:image/image.dart' as imglib;
+
+
+
+typedef convert_func = Pointer<Uint32> Function(
+    Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>,
+    Int32, Int32, Int32, Int32
+    );
+typedef Convert = Pointer<Uint32> Function(
+    Pointer<Uint8>, Pointer<Uint8>, Pointer<Uint8>,
+    int, int, int, int
+    );
+
+
 
 class VideoPoseDetectionScreen extends StatefulWidget {
   const VideoPoseDetectionScreen({Key? key}) : super(key: key);
@@ -18,35 +35,46 @@ class VideoPoseDetectionScreen extends StatefulWidget {
 
 class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
-  List<CameraDescription>? cameras; // Lista de cameras disponíveis
-  CameraController? controller;
-  XFile? imageFile; // A imagem tirada
-  List<Pose>? poses;
-  UI.Image? image;
+  List<CameraDescription>? _cameras; // Lista de cameras disponíveis
+  CameraController? _cameraController; // Controlador
+  XFile? _imageFile; // A imagem tirada
+  List<Pose>? _poses; // Lista das poses na foto
+  imglib.Image? _image; // A foto em si
 
-  bool poseScanning = false;
-  bool pausar = true;
+  CameraImage? _savedImage;
+
+  bool _poseScanning = false;
+  bool _pausar = true;
 
   final _cameraWidgetKey = GlobalKey();
-  Size? _cameraWidgetSize;
+  UI.Size? _cameraWidgetSize;
 
-  void getSize() {
+  void _getCameraSize() {
     setState(() {
       _cameraWidgetSize = _cameraWidgetKey.currentContext!.size;
     });
   }
 
-  void loadCamera() async{
-    cameras = await availableCameras();
+  final DynamicLibrary convertImageLib = Platform.isAndroid
+      ? DynamicLibrary.open("libconvertImage.so")
+      : DynamicLibrary.process();
+  Convert? conv;
 
-    if (cameras != null) {
+
+  void _loadCamera() async{
+    // Pega uma lista de cameras disponíveis
+    _cameras = await availableCameras();
+
+    if (_cameras != null) {
       // camera[0] = primeira camera
-      controller = CameraController(cameras![0], ResolutionPreset.max);
+      _cameraController = CameraController(_cameras![0], ResolutionPreset.max);
 
-      controller!.initialize().then((value) {
-        if (!mounted) {
-          return;
-        }
+      // Inicia o controlador
+      _cameraController!.initialize().then((_) async{
+
+        // Inicia imageStream
+        await _cameraController!.startImageStream((CameraImage image) => _processCameraImage(image));
+
         setState(() {});
       });
     }
@@ -54,79 +82,20 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       print("Não foi encontrado nenhuma camera");
     }
 
-    if (controller != null) {
+    if (_cameraController != null) {
       setState(() {});
     }
-  }
-
-  void takePictureAndTakePoses() async{
-    if (pausar){
-      poseScanning = false;
-      setState(() {});
-      return;
-    }
-
-    poseScanning = true;
-    setState(() {});
-
-    try{
-      if (controller != null){
-        if (controller!.value.isInitialized) {
-
-          controller!.setFlashMode(FlashMode.off);
-
-          imageFile = await controller!.takePicture();
-          setState(() {});
-
-          if (imageFile != null) {
-            image = await _loadImage(File(imageFile!.path));
-            setState(() {});
-            getPosesFromImage(imageFile!);
-          }
-          else{
-            print("Imagem deu nullo por algum motivo");
-          }
-        }
-      }
-    }
-    catch (e)
-    {
-      imageFile = null;
-      setState(() {});
-
-      print(e);
-    }
-  }
-
-  Future<UI.Image> _loadImage(File file) async {
-    final data = await file.readAsBytes();
-    return await decodeImageFromList(data);
-  }
-
-  void getPosesFromImage(XFile image) async{
-    final inputImage = InputImage.fromFilePath(image.path);
-
-    final options = PoseDetectorOptions();
-    final poseDetector = PoseDetector(options: options);
-
-    final List<Pose> poses = await poseDetector.processImage(inputImage);
-
-    await poseDetector.close();
-
-    this.poses = poses;
-    setState(() {});
-
-    if (poses.isEmpty){
-      print("Não foi encontrado nenhuma pose");
-    }
-
-    takePictureAndTakePoses();
   }
 
   @override
   void initState() {
     super.initState();
-    loadCamera();
+    _loadCamera();
+
+    // Carrega a função em c++ de conversão de imagem.
+    conv = convertImageLib
+        .lookup<NativeFunction<convert_func>>('convertImage')
+        .asFunction<Convert>();
   }
 
   @override
@@ -139,33 +108,33 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
               child: Stack(
                 children: <Widget>[
                   Center(
-                    child: controller == null? // Carregando camera
+                    child: _cameraController == null? // Carregando camera
                     Shimmer.fromColors(
                         baseColor: Colors.black,
                         highlightColor: Colors.white,
                         child: const SizedBox(width: double.infinity, height: 300,)
                     )
                         :
-                    !controller!.value.isInitialized? // Achou camera mas ainda está carregando
+                    !_cameraController!.value.isInitialized? // Achou camera mas ainda está carregando
                     const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),)
                         :
                     CustomPaint(
-                      foregroundPainter: PosePainter(poses, image, _cameraWidgetSize, pausar),
-                      child: CameraPreview(controller!, key: _cameraWidgetKey,),
+                      foregroundPainter: PosePainter(_poses, _image, _cameraWidgetSize, _pausar),
+                      child: CameraPreview(_cameraController!, key: _cameraWidgetKey,),
                     ),
                   ),
 
-                  if (controller != null && controller!.value.isInitialized)
-                    pausar?
+                  if (_cameraController != null && _cameraController!.value.isInitialized)
+                    _pausar?
                       MaterialButton(
                         onPressed: () {
-                          if (!poseScanning){ // Evita chamar novamente se ja estiver rodando
+                          if (!_poseScanning){ // Evita chamar novamente se ja estiver rodando
                             // Isso pode acontecer caso o usuário aperte varias vezes o botão
-                            pausar = false;
+                            _pausar = false;
                             setState(() {});
 
-                            getSize();
-                            takePictureAndTakePoses();
+                            _getCameraSize();
+                            _takePictureAndTakePoses();
                           }
                         },
                         child: Container(
@@ -179,7 +148,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                     :
                       MaterialButton(
                         onPressed: () {
-                          pausar = true;
+                          _pausar = true;
                           setState(() {});
                         },
                         child: Container(
@@ -197,14 +166,108 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       ),
     );
   }
+
+  void _processCameraImage(CameraImage image) async{
+    setState(() {
+      _savedImage = image;
+    });
+  }
+
+  void _takePictureAndTakePoses() async{
+    if (_pausar){
+      setState(() {_poseScanning = false;});
+      return;
+    }
+
+    _poseScanning = true;
+    setState(() {});
+
+    try{
+      if (_cameraController != null && _cameraController!.value.isInitialized && _savedImage != null && conv != null){
+
+        // Allocate memory for the 3 planes of the image
+        Pointer<Uint8> p = calloc.allocate(
+            _savedImage!.planes[0].bytes.length
+        );
+        Pointer<Uint8> p1 = calloc.allocate(
+            _savedImage!.planes[1].bytes.length
+        );
+        Pointer<Uint8> p2 = calloc.allocate(
+            _savedImage!.planes[2].bytes.length
+        );
+
+        // Assign the planes data to the pointers of the image
+        Uint8List pointerList = p.asTypedList(
+            _savedImage!.planes[0].bytes.length
+        );
+        Uint8List pointerList1 = p1.asTypedList(
+            _savedImage!.planes[1].bytes.length
+        );
+        Uint8List pointerList2 = p2.asTypedList(
+            _savedImage!.planes[2].bytes.length
+        );
+        pointerList.setRange(0, _savedImage!.planes[0].bytes.length, _savedImage!.planes[0].bytes);
+        pointerList1.setRange(0, _savedImage!.planes[1].bytes.length, _savedImage!.planes[1].bytes);
+        pointerList2.setRange(0, _savedImage!.planes[2].bytes.length, _savedImage!.planes[2].bytes);
+
+        Pointer<Uint32> imgP = conv!(p, p1, p2, _savedImage!.planes[1].bytesPerRow, _savedImage!.planes[1].bytesPerPixel!, _savedImage!.width, _savedImage!.height);
+        // Get the pointer of the data returned from the function to a List
+        List<int> imgData = imgP.asTypedList(_savedImage!.width * _savedImage!.height);
+        // Generate image from the converted data
+        imglib.Image img = imglib.Image.fromBytes(_savedImage!.height, _savedImage!.width, imgData);
+
+        // Free the memory space allocated
+        // from the planes and the converted data
+        calloc.free(p);
+        calloc.free(p1);
+        calloc.free(p2);
+        calloc.free(imgP);
+
+        final directory = await getTemporaryDirectory();
+        final filepath = "abc.png";
+        File imgFile = File(filepath);
+        imgFile.writeAsBytes(img.getBytes());
+        _image = img;
+        setState(() {});
+
+        _getPosesFromImage(imgFile.path);
+      }
+    }
+    catch (e)
+    {
+      setState(() {_imageFile = null; _image = null;});
+
+      print(e);
+    }
+  }
+
+  void _getPosesFromImage(String path) async{
+    final inputImage = InputImage.fromFilePath(path);
+
+    final options = PoseDetectorOptions();
+    final poseDetector = PoseDetector(options: options);
+
+    final List<Pose> poses = await poseDetector.processImage(inputImage);
+
+    await poseDetector.close();
+
+    _poses = poses;
+    setState(() {});
+
+    if (poses.isEmpty){
+      print("Não foi encontrado nenhuma pose");
+    }
+
+    _takePictureAndTakePoses();
+  }
 }
 
 // Desenha as poses na camera
 class PosePainter extends CustomPainter{
 
   final List<Pose>? poses;
-  final UI.Image? image;
-  Size ?cameraSize;
+  final imglib.Image? image;
+  UI.Size ?cameraSize;
   bool pause;
 
   //final CameraController controller;
@@ -212,7 +275,7 @@ class PosePainter extends CustomPainter{
   PosePainter(this.poses, this.image, this.cameraSize, this.pause);
 
   @override
-  void paint (Canvas canvas, Size size){
+  void paint (Canvas canvas, UI.Size size){
 
     if (poses != null && poses!.isNotEmpty && image != null && !pause && cameraSize != null){
       var pointPainter = Paint()

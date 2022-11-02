@@ -1,0 +1,3 @@
+C:/Users/lucas/Documents/GitHub/facedetection_test_app/android/app/.cxx/Debug/6x01g446/armeabi-v7a/CMakeFiles/rebuild_cache.dir
+C:/Users/lucas/Documents/GitHub/facedetection_test_app/android/app/.cxx/Debug/6x01g446/armeabi-v7a/CMakeFiles/convertImage.dir
+C:/Users/lucas/Documents/GitHub/facedetection_test_app/android/app/.cxx/Debug/6x01g446/armeabi-v7a/CMakeFiles/edit_cache.dir
