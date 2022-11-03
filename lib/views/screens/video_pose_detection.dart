@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -26,6 +28,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
   bool poseScanning = false;
   bool pausar = true;
+  Timer? _timer;
 
   final _cameraWidgetKey = GlobalKey();
   Size? _cameraWidgetSize;
@@ -57,6 +60,13 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     if (controller != null) {
       setState(() {});
     }
+  }
+
+  @override
+  void dispose(){
+    controller?.dispose();
+    _timer?.cancel();
+    super.dispose();
   }
 
   void takePictureAndTakePoses() async{
@@ -103,8 +113,8 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     return await decodeImageFromList(data);
   }
 
-  void getPosesFromImage(XFile image) async{
-    final inputImage = InputImage.fromFilePath(image.path);
+  void getPosesFromImage(CameraImage image) async{
+    final inputImage = InputImage.fromBytes(bytes: image.planes[0].bytes, inputImageData: null);
 
     final options = PoseDetectorOptions();
     final poseDetector = PoseDetector(options: options);
@@ -119,8 +129,6 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
     if (poses.isEmpty){
       print("Não foi encontrado nenhuma pose");
     }
-
-    takePictureAndTakePoses();
   }
 
   @override
@@ -159,13 +167,19 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                     pausar?
                       MaterialButton(
                         onPressed: () {
-                          if (!poseScanning){ // Evita chamar novamente se ja estiver rodando
+                          if (!poseScanning && controller!= null){ // Evita chamar novamente se ja estiver rodando
                             // Isso pode acontecer caso o usuário aperte varias vezes o botão
                             pausar = false;
                             setState(() {});
 
                             getSize();
-                            takePictureAndTakePoses();
+                            controller!.startImageStream((image) async{
+                              if (pausar) {
+                                return;
+                              }
+
+                              getPosesFromImage(image);
+                            });
                           }
                         },
                         child: Container(
