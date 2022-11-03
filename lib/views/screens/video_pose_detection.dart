@@ -1,15 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'package:shimmer/shimmer.dart';
-
-import 'dart:io';
-import 'dart:ui' as UI;
-
-import 'package:facedetection_test_app/routes.dart';
 
 class VideoPoseDetectionScreen extends StatefulWidget {
   const VideoPoseDetectionScreen({Key? key}) : super(key: key);
@@ -20,33 +14,30 @@ class VideoPoseDetectionScreen extends StatefulWidget {
 
 class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
-  List<CameraDescription>? cameras; // Lista de cameras disponíveis
-  CameraController? controller;
-  XFile? imageFile; // A imagem tirada
-  List<Pose>? poses;
-  UI.Image? image;
+  List<CameraDescription>? _cameras; // Lista de cameras disponíveis
+  CameraController? _controller;
+  List<Pose>? _poses;
 
-  bool poseScanning = false;
-  bool pausar = true;
-  Timer? _timer;
+  bool _poseScanning = false;
+  bool _pausar = true;
 
   final _cameraWidgetKey = GlobalKey();
-  Size? _cameraWidgetSize;
+  Size? _cameraWidgetSize, _pictureSize;
 
-  void getSize() {
+  void _getSize() {
     setState(() {
       _cameraWidgetSize = _cameraWidgetKey.currentContext!.size;
     });
   }
 
-  void loadCamera() async{
-    cameras = await availableCameras();
+  void _loadCamera() async{
+    _cameras = await availableCameras();
 
-    if (cameras != null) {
+    if (_cameras != null) {
       // camera[0] = primeira camera
-      controller = CameraController(cameras![0], ResolutionPreset.max);
+      _controller = CameraController(_cameras![0], ResolutionPreset.max);
 
-      controller!.initialize().then((value) {
+      _controller!.initialize().then((value) {
         if (!mounted) {
           return;
         }
@@ -57,19 +48,18 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       print("Não foi encontrado nenhuma camera");
     }
 
-    if (controller != null) {
+    if (_controller != null) {
       setState(() {});
     }
   }
 
   @override
   void dispose(){
-    controller?.dispose();
-    _timer?.cancel();
+    _controller?.dispose();
     super.dispose();
   }
 
-  void takePictureAndTakePoses() async{
+  /*void takePictureAndTakePoses() async{
     if (pausar){
       poseScanning = false;
       setState(() {});
@@ -111,30 +101,83 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   Future<UI.Image> _loadImage(File file) async {
     final data = await file.readAsBytes();
     return await decodeImageFromList(data);
-  }
+  }*/
 
-  void getPosesFromImage(CameraImage image) async{
-    final inputImage = InputImage.fromBytes(bytes: image.planes[0].bytes, inputImageData: null);
+  void _getPosesFromImage(CameraImage image) async {
+    try {
+      // Evita o programa rodar mais de uma vez
+      if (_poseScanning || _cameras == null)
+        return;
 
-    final options = PoseDetectorOptions();
-    final poseDetector = PoseDetector(options: options);
+      _poseScanning = true;
+      setState(() {});
 
-    final List<Pose> poses = await poseDetector.processImage(inputImage);
+      // "Tirar Foto" ==========================================================
 
-    await poseDetector.close();
+      final WriteBuffer allBytes = WriteBuffer();
+      for (Plane plane in image.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
 
-    this.poses = poses;
-    setState(() {});
+      _pictureSize = Size(image.width.toDouble(), image.height.toDouble());
+      setState(() {});
 
-    if (poses.isEmpty){
-      print("Não foi encontrado nenhuma pose");
+      final InputImageRotation imageRotation =
+          InputImageRotationValue.fromRawValue(
+              _cameras![0].sensorOrientation) ??
+              InputImageRotation.rotation90deg;
+
+      final InputImageFormat inputImageFormat = InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.yuv420;
+
+      final planeData = image.planes.map(
+            (Plane plane) {
+          return InputImagePlaneMetadata(
+            bytesPerRow: plane.bytesPerRow,
+            //height: plane.height,
+            //width: plane.width,
+          );
+        },
+      ).toList();
+
+      final inputImageData = InputImageData(
+        size: _pictureSize!,
+        imageRotation: imageRotation,
+        inputImageFormat: inputImageFormat,
+        planeData: planeData,
+      );
+
+      final inputImage =
+      InputImage.fromBytes(bytes: bytes, inputImageData: inputImageData);
+
+
+
+      // Inicio do calculo das poses ===========================================
+
+      final options = PoseDetectorOptions();
+      final poseDetector = PoseDetector(options: options);
+
+      final List<Pose> poses = await poseDetector.processImage(inputImage);
+
+      await poseDetector.close();
+
+      _poses = poses;
+      _poseScanning = false;
+      setState(() {});
+
+      if (poses.isEmpty) {
+        print("Não foi encontrado nenhuma pose");
+      }
+    }
+    catch (e) {
+      print(e);
     }
   }
 
   @override
   void initState() {
     super.initState();
-    loadCamera();
+    _loadCamera();
   }
 
   @override
@@ -147,38 +190,39 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
               child: Stack(
                 children: <Widget>[
                   Center(
-                    child: controller == null? // Carregando camera
+                    child: _controller == null? // Carregando camera
                     Shimmer.fromColors(
                         baseColor: Colors.black,
                         highlightColor: Colors.white,
                         child: const SizedBox(width: double.infinity, height: 300,)
                     )
                         :
-                    !controller!.value.isInitialized? // Achou camera mas ainda está carregando
+                    !_controller!.value.isInitialized? // Achou camera mas ainda está carregando
                     const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),)
                         :
                     CustomPaint(
-                      foregroundPainter: PosePainter(poses, image, _cameraWidgetSize, pausar),
-                      child: CameraPreview(controller!, key: _cameraWidgetKey,),
+                      foregroundPainter: PosePainter(_poses, _pictureSize, _cameraWidgetSize, _pausar),
+                      child: CameraPreview(_controller!, key: _cameraWidgetKey,),
                     ),
                   ),
 
-                  if (controller != null && controller!.value.isInitialized)
-                    pausar?
+                  if (_controller != null && _controller!.value.isInitialized)
+                    _pausar?
                       MaterialButton(
                         onPressed: () {
-                          if (!poseScanning && controller!= null){ // Evita chamar novamente se ja estiver rodando
+                          if (!_poseScanning && _controller!= null){ // Evita chamar novamente se ja estiver rodando
                             // Isso pode acontecer caso o usuário aperte varias vezes o botão
-                            pausar = false;
+                            _pausar = false;
                             setState(() {});
 
-                            getSize();
-                            controller!.startImageStream((image) async{
-                              if (pausar) {
+                            _getSize();
+                            _controller!.startImageStream((image) async{
+                              if (_pausar) {
+                                _controller!.stopImageStream();
                                 return;
                               }
 
-                              getPosesFromImage(image);
+                              _getPosesFromImage(image);
                             });
                           }
                         },
@@ -193,7 +237,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                     :
                       MaterialButton(
                         onPressed: () {
-                          pausar = true;
+                          _pausar = true;
                           setState(() {});
                         },
                         child: Container(
@@ -216,38 +260,35 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 // Desenha as poses na camera
 class PosePainter extends CustomPainter{
 
-  final List<Pose>? poses;
-  final UI.Image? image;
-  Size ?cameraSize;
-  bool pause;
+  final List<Pose>? _poses;
+  final Size? _pictureSize;
+  final Size? _cameraSize;
+  final bool _pause;
 
   //final CameraController controller;
 
-  PosePainter(this.poses, this.image, this.cameraSize, this.pause);
+  PosePainter(this._poses, this._pictureSize, this._cameraSize, this._pause);
 
   @override
   void paint (Canvas canvas, Size size){
 
-    if (poses != null && poses!.isNotEmpty && image != null && !pause && cameraSize != null){
+    if (_poses != null && _poses!.isNotEmpty && _pictureSize != null && _cameraSize != null && !_pause){
       var pointPainter = Paint()
         ..color = Colors.orange
         ..strokeCap = StrokeCap.round //rounded points
         ..strokeWidth = 10;
 
-      int imageWidth = image!.width;
-      int imageHeight = image!.height;
-
-      for (Pose pose in poses!) {
+      for (Pose pose in _poses!) {
         pose.landmarks.forEach((_, landmark) {
           // Pega o nome do local do corpo
           //final type = landmark.type;
 
           // Pega a localização dele na imagem
-          final x = landmark.x / imageWidth;
-          final y = landmark.y / imageHeight;
+          final x = landmark.x / _pictureSize!.height;
+          final y = landmark.y / _pictureSize!.width;
           //final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
 
-          canvas.drawCircle(Offset(x * cameraSize!.width, y * cameraSize!.height), 25, pointPainter);
+          canvas.drawCircle(Offset(x * _cameraSize!.width, y * _cameraSize!.height), 10, pointPainter);
         });
       }
     }
@@ -256,18 +297,14 @@ class PosePainter extends CustomPainter{
   @override
   bool shouldRepaint (PosePainter oldDelegate) {
 
-    if (pause != oldDelegate.pause) {
+    if (_pause != oldDelegate._pause) {
       return true;
     }
 
-    if (poses == null) {
+    if (_poses == null || _poses!.isEmpty) {
       return false;
     }
 
-    if (poses!.isEmpty) {
-      return false;
-    }
-
-    return poses != oldDelegate.poses;
+    return _poses != oldDelegate._poses;
   }
 }
