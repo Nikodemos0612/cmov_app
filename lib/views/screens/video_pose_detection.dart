@@ -18,7 +18,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   CameraController? _controller;
   List<Pose>? _poses;
 
-  bool _poseScanning = false;
+  int _poseScanningCount = 0;
   bool _pausar = true;
 
   final _cameraWidgetKey = GlobalKey();
@@ -106,10 +106,10 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   void _getPosesFromImage(CameraImage image) async {
     try {
       // Evita o programa rodar mais de uma vez
-      if (_poseScanning || _cameras == null)
+      if (_poseScanningCount >= 4|| _cameras == null)
         return;
 
-      _poseScanning = true;
+      _poseScanningCount ++;
       setState(() {});
 
       // "Tirar Foto" ==========================================================
@@ -162,7 +162,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
       await poseDetector.close();
 
       _poses = poses;
-      _poseScanning = false;
+      _poseScanningCount --;
       setState(() {});
 
       if (poses.isEmpty) {
@@ -210,7 +210,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                     _pausar?
                       MaterialButton(
                         onPressed: () {
-                          if (!_poseScanning && _controller!= null){ // Evita chamar novamente se ja estiver rodando
+                          if (_poseScanningCount <= 0 && _controller!= null){ // Evita chamar novamente se ja estiver rodando
                             // Isso pode acontecer caso o usuário aperte varias vezes o botão
                             _pausar = false;
                             setState(() {});
