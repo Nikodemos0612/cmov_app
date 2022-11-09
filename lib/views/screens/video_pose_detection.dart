@@ -12,7 +12,7 @@ class VideoPoseDetectionScreen extends StatefulWidget {
   State<VideoPoseDetectionScreen> createState() => _VideoPoseDetectionScreenState();
 }
 
-class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
+class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> with WidgetsBindingObserver{
 
   List<CameraDescription>? _cameras; // Lista de cameras disponíveis
   CameraController? _controller;
@@ -35,7 +35,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
     if (_cameras != null) {
       // camera[0] = primeira camera
-      _controller = CameraController(_cameras![0], ResolutionPreset.max);
+      _controller = CameraController(_cameras![0], ResolutionPreset.max, enableAudio: false);
 
       _controller!.initialize().then((value) {
         if (!mounted) {
@@ -55,53 +55,12 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
 
   @override
   void dispose(){
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  /*void takePictureAndTakePoses() async{
-    if (pausar){
-      poseScanning = false;
-      setState(() {});
-      return;
-    }
-
-    poseScanning = true;
+    _pausar = true;
     setState(() {});
 
-    try{
-      if (controller != null){
-        if (controller!.value.isInitialized) {
-
-          controller!.setFlashMode(FlashMode.off);
-
-          imageFile = await controller!.takePicture();
-          setState(() {});
-
-          if (imageFile != null) {
-            image = await _loadImage(File(imageFile!.path));
-            setState(() {});
-            getPosesFromImage(imageFile!);
-          }
-          else{
-            print("Imagem deu nullo por algum motivo");
-          }
-        }
-      }
-    }
-    catch (e)
-    {
-      imageFile = null;
-      setState(() {});
-
-      print(e);
-    }
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
-
-  Future<UI.Image> _loadImage(File file) async {
-    final data = await file.readAsBytes();
-    return await decodeImageFromList(data);
-  }*/
 
   void _getPosesFromImage(CameraImage image) async {
     try {
@@ -177,7 +136,28 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadCamera();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // App state changed before we got the chance to initialize.
+    if (_controller == null || !_controller!.value.isInitialized) {
+      return;
+    }
+    if (state == AppLifecycleState.inactive) {
+      _controller?.dispose();
+      _pausar = true;
+      setState(() {});
+    } else if (state == AppLifecycleState.resumed) {
+      if (_controller != null) {
+        _loadCamera();
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    }
   }
 
   @override
@@ -202,7 +182,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> {
                         :
                     CustomPaint(
                       foregroundPainter: PosePainter(_poses, _pictureSize, _cameraWidgetSize, _pausar),
-                      child: CameraPreview(_controller!, key: _cameraWidgetKey,),
+                      child: Padding(child: CameraPreview(_controller!, key: _cameraWidgetKey,), padding: EdgeInsets.only(bottom: 35),),
                     ),
                   ),
 

@@ -26,9 +26,13 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
     return CupertinoPageScaffold(
           child: Padding(
             padding: EdgeInsets.only(top: 30),
-            child: CupertinoScrollbar(
-              child: Center(
-                  child: Column(
+            child: ListView(
+
+              scrollDirection: Axis.vertical,
+
+
+              children: [
+                    Column(
                       children: [
 
                         if (poseScanning)
@@ -114,7 +118,7 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
 
                       ],
                     ),
-                  )
+                  ]
               )
           )
     );
@@ -230,7 +234,7 @@ class PosePainter extends CustomPainter{
           final y = landmark.y;
           final z = landmark.z; // ATENÇÃO: z é uma variavel não tão precisa quanto x e y, tomar cuidado quando utiliza-la
 
-          canvas.drawCircle(Offset(x, y), 25, pointPainter);
+          canvas.drawCircle(Offset(x, y), 10, pointPainter);
         });
       }
     }
