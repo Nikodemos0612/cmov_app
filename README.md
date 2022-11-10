@@ -1,4 +1,4 @@
-# facedetection_test_app
+# pose_detection_app
 
 A new Flutter project.
 
