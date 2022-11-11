@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.pose_detection_app">
+    package="com.example.cmov_app">
 
    <application
-        android:label="pose_detection_app"
+        android:label="cmov_app"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

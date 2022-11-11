@@ -1,4 +1,4 @@
-# pose_detection_app
+# cmov_app
 
 A new Flutter project.
 

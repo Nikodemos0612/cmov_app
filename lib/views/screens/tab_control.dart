@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'package:pose_detection_app/routes.dart';
+import 'package:cmov_app/routes.dart';
 
 class TabControl extends StatefulWidget {
   const TabControl({Key? key}) : super(key: key);
