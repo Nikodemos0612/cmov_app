@@ -24,16 +24,40 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
   final _cameraWidgetKey = GlobalKey();
   Size? _cameraWidgetSize, _pictureSize;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _firstLoadCamera();
+  }
+
   void _getSize() {
     setState(() {
       _cameraWidgetSize = _cameraWidgetKey.currentContext!.size;
     });
   }
 
-  void _loadCamera() async{
-    _cameras = await availableCameras();
+  @override
+  void dispose(){
+    _pausar = true;
+    //setState(() {});
 
+    WidgetsBinding.instance.removeObserver(this);
+    _controller?.stopImageStream();
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  void _firstLoadCamera() async {
+    _cameras = await availableCameras();
+    setState(() {});
+    _loadCamera();
+  }
+
+  void _loadCamera() async{
     if (_cameras != null) {
+      _controller?.dispose();
+
       // camera[0] = primeira camera
       _controller = CameraController(_cameras![0], ResolutionPreset.max, enableAudio: false);
 
@@ -53,13 +77,81 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
     }
   }
 
-  @override
-  void dispose(){
-    _pausar = true;
-    setState(() {});
 
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      backgroundColor: Colors.black,
+      child: CupertinoScrollbar(
+        child: SizedBox.expand(
+          child: Center(
+              child: Stack(
+                children: <Widget>[
+                  Center(
+                    child: _controller == null? // Carregando camera
+                    Shimmer.fromColors(
+                        baseColor: Colors.black,
+                        highlightColor: Colors.white,
+                        child: const SizedBox(width: double.infinity, height: 300,)
+                    )
+                        :
+                    !_controller!.value.isInitialized? // Achou camera mas ainda está carregando
+                    const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),)
+                        :
+                    CustomPaint(
+                      foregroundPainter: PosePainter(_poses, _pictureSize, _cameraWidgetSize, _pausar),
+                      child: Padding(padding: const EdgeInsets.only(bottom: 35),child: CameraPreview(_controller!, key: _cameraWidgetKey,),),
+                    ),
+                  ),
+
+                  if (_controller != null && _controller!.value.isInitialized)
+                    _pausar?
+                      MaterialButton(
+                        onPressed: () {
+                          if (_poseScanningCount <= 0 && _controller!= null){ // Evita chamar novamente se ja estiver rodando
+                            // Isso pode acontecer caso o usuário aperte varias vezes o botão
+                            _pausar = false;
+                            setState(() {});
+
+                            _getSize();
+                            _controller!.startImageStream((image) async{
+                              if (_pausar) {
+                                _controller?.stopImageStream();
+                                return;
+                              }
+
+                              _getPosesFromImage(image);
+                            });
+                          }
+                        },
+                        child: Container(
+                          alignment: Alignment.bottomCenter,
+                          child: const Padding(
+                            padding: EdgeInsets.only(bottom: 100),
+                            child: Icon(Icons.play_arrow, color: Colors.white, size: 40,),
+                          ),
+                        ),
+                      )
+                    :
+                      MaterialButton(
+                        onPressed: () {
+                          _pausar = true;
+                          setState(() {});
+                        },
+                        child: Container(
+                          alignment: Alignment.bottomCenter,
+                          child: const Padding(
+                              padding: EdgeInsets.only(bottom: 100),
+                              child: Icon(Icons.pause, color: Colors.white, size: 40,)
+                          ),
+                        )
+                    )
+                ],
+              )
+          ),
+        ),
+      ),
+    );
   }
 
   void _getPosesFromImage(CameraImage image) async {
@@ -134,22 +226,17 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _loadCamera();
-  }
-
-  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // App state changed before we got the chance to initialize.
     if (_controller == null || !_controller!.value.isInitialized) {
       return;
     }
     if (state == AppLifecycleState.inactive) {
-      _controller?.dispose();
       _pausar = true;
       setState(() {});
+
+      _controller?.dispose();
+
     } else if (state == AppLifecycleState.resumed) {
       if (_controller != null) {
         _loadCamera();
@@ -158,82 +245,6 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
         }
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      backgroundColor: Colors.black,
-      child: CupertinoScrollbar(
-        child: SizedBox.expand(
-          child: Center(
-              child: Stack(
-                children: <Widget>[
-                  Center(
-                    child: _controller == null? // Carregando camera
-                    Shimmer.fromColors(
-                        baseColor: Colors.black,
-                        highlightColor: Colors.white,
-                        child: const SizedBox(width: double.infinity, height: 300,)
-                    )
-                        :
-                    !_controller!.value.isInitialized? // Achou camera mas ainda está carregando
-                    const Align(alignment: Alignment.center, child: CircularProgressIndicator(color: Colors.orange,),)
-                        :
-                    CustomPaint(
-                      foregroundPainter: PosePainter(_poses, _pictureSize, _cameraWidgetSize, _pausar),
-                      child: Padding(child: CameraPreview(_controller!, key: _cameraWidgetKey,), padding: EdgeInsets.only(bottom: 35),),
-                    ),
-                  ),
-
-                  if (_controller != null && _controller!.value.isInitialized)
-                    _pausar?
-                      MaterialButton(
-                        onPressed: () {
-                          if (_poseScanningCount <= 0 && _controller!= null){ // Evita chamar novamente se ja estiver rodando
-                            // Isso pode acontecer caso o usuário aperte varias vezes o botão
-                            _pausar = false;
-                            setState(() {});
-
-                            _getSize();
-                            _controller!.startImageStream((image) async{
-                              if (_pausar) {
-                                _controller!.stopImageStream();
-                                return;
-                              }
-
-                              _getPosesFromImage(image);
-                            });
-                          }
-                        },
-                        child: Container(
-                          alignment: Alignment.bottomCenter,
-                          child: const Padding(
-                            padding: EdgeInsets.only(bottom: 100),
-                            child: Icon(Icons.play_arrow, color: Colors.white, size: 40,),
-                          ),
-                        ),
-                      )
-                    :
-                      MaterialButton(
-                        onPressed: () {
-                          _pausar = true;
-                          setState(() {});
-                        },
-                        child: Container(
-                          alignment: Alignment.bottomCenter,
-                          child: const Padding(
-                              padding: EdgeInsets.only(bottom: 100),
-                              child: Icon(Icons.pause, color: Colors.white, size: 40,)
-                          ),
-                        )
-                    )
-                ],
-              )
-          ),
-        ),
-      ),
-    );
   }
 }
 
