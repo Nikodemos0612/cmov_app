@@ -1,4 +1,4 @@
-package com.example.facedetection_test_app
+package com.example.cmov_app
 
 import io.flutter.embedding.android.FlutterActivity
 

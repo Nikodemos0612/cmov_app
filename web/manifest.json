@@ -1,6 +1,6 @@
 {
-    "name": "facedetection_test_app",
-    "short_name": "facedetection_test_app",
+    "name": "cmov_app",
+    "short_name": "cmov_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

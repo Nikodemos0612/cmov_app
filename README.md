@@ -1,4 +1,4 @@
-# facedetection_test_app
+# cmov_app
 
 A new Flutter project.
 

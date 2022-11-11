@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'package:facedetection_test_app/views/screens/image_pose_detection.dart';
-import 'package:facedetection_test_app/views/screens/video_pose_detection.dart';
-import 'package:facedetection_test_app/views/screens/tab_control.dart';
+import 'package:cmov_app/views/screens/image_pose_detection.dart';
+import 'package:cmov_app/views/screens/video_pose_detection.dart';
+import 'package:cmov_app/views/screens/tab_control.dart';
 
 // Route Names
 const String tabControl = 'tabControl';
