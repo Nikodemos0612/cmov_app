@@ -1,9 +1,9 @@
-# cmov_app
+# CMOV_app
 
 Aplicativo de captura de movimento que utiliza o MLKit da Google para capturar, desenhar e passar para um backend os dados da captura.
 Feito em Dart por Lucas Coimbra da Silva && Leonardo Massuhiro Sato.
 
-## Getting Started
+## Sobre
 
 Esse projeto tem como objetivo capturar as poses de uma pessoa e passar para o Firebase os dados da captura, com o objetivo final de controlar um robo.
 Ele utiliza o MLKit para a captura das poses e o Realtime Database do Firebase para a passagem dos dados para o robo.
@@ -52,4 +52,4 @@ A captura por foto foi feita com o uso do ImagePicker.
 A captura em tempo real foi feita utilizando ImageStream, a qual a imagem gerada por ele (em yuv420 para o android utilizado nos testes) pode ser passada como binário direto para o MLKit, sem precisar converter para uma imagem normal (algo que muitas pessoas não sabem).
 Isso evita a dor de cabeça de converter yuv420 para uma imagem normal (que utilizaria código em C para evitar problemas com performance) e evita a preocupação com a performance na conversão (já que ela não ocorre).
 
-Na captura em tempo real há a verificação das poses em 4 threads, sendo possível mudar o número máximo de threads modificando a variável "_poseScanningMaxCount" (4 foi o número que menos afetou a perfomance em comparação com a melhora na fluidez da captura).
+Na captura em tempo real há a verificação das poses em 4 threads, sendo possível alterar o número máximo de threads modificando a variável "_poseScanningMaxCount" (4 foi o número que menos afetou a perfomance em comparação com a melhora na fluidez da captura).
