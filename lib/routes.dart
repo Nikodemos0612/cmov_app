@@ -30,6 +30,9 @@ cupPage(String routeName){
     case videoPoseDetectionTab:
       return const VideoPoseDetectionScreen();
 
+    case tabControl:
+      return const TabControl();
+
     default:
       throw('Não existe uma rota com esse nome');
   }
