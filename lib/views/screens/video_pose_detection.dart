@@ -20,6 +20,7 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
   List<Pose>? _poses;
 
   int _poseScanningCount = 0;
+  static const int _poseScanningMaxCount = 4;
   bool _pausar = true;
 
   final _cameraWidgetKey = GlobalKey();
@@ -158,8 +159,9 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
   void _getPosesFromImage(CameraImage image) async {
     try {
       // Evita o programa rodar mais de uma vez
-      if (_poseScanningCount >= 4|| _cameras == null)
+      if (_poseScanningCount >= _poseScanningCount|| _cameras == null) {
         return;
+      }
 
       _poseScanningCount ++;
       setState(() {});
