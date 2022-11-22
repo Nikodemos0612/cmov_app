@@ -1,3 +1,4 @@
+import 'package:cmov_app/backend/utils/pose_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -192,6 +193,8 @@ class _StaticImagePoseDetectorScreenState extends State<StaticImagePoseDetectorS
 
     poseScanning = false;
     setState(() {});
+
+    PoseController.setAllPoses(poses);
   }
 
   CustomPaint PosePaint() {

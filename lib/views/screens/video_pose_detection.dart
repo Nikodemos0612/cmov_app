@@ -1,3 +1,4 @@
+import 'package:cmov_app/backend/utils/pose_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -215,6 +216,8 @@ class _VideoPoseDetectionScreenState extends State<VideoPoseDetectionScreen> wit
       _poses = poses;
       _poseScanningCount --;
       setState(() {});
+
+      PoseController.setAllPoses(poses);
 
       if (poses.isEmpty) {
         print("Não foi encontrado nenhuma pose");
